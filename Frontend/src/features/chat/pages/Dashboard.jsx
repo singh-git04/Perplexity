@@ -25,11 +25,11 @@ const Dashboard = () => {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-
     const trimmedMessage = chatInput.trim()
     if (!trimmedMessage) {
       return 
     }
+    console.log(trimmedMessage, currentChatId)
  
     chat.handleSendMessage({message: trimmedMessage, chatId: currentChatId})
     setChatInput('')

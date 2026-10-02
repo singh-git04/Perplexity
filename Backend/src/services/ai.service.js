@@ -1,11 +1,15 @@
 import { ChatMistralAI } from "@langchain/mistralai";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, SystemMessage ,AIMessage, tool, createAgent} from "langchain";
 import { searchInternet } from "./internet.service.js";
 import * as z from "zod"
 
+const geminiModel = new ChatGoogleGenerativeAI({
+  model: "gemini-3.8-flash",
+  apiKey: process.env.GOOGLE_APIKEY
+});
 
-
-const model = new ChatMistralAI({
+const mistralModel = new ChatMistralAI({
 model: "mistral-small-latest",
 apiKey: process.env.MISTRAL_APIKEY
 });
@@ -25,7 +29,7 @@ const searchInternetTool = tool(
 
 
 const agent = createAgent({
-    model: model,
+    model: geminiModel,
     tools: [searchInternetTool]
 })
 
@@ -50,7 +54,7 @@ export async function genrateResponse(messages){
 
 
 export async function generateChatTitle(message) {
-    const response  = await model.invoke([
+    const response  = await geminiModel.invoke([
         new SystemMessage(
             `You are a helpful assistant that generates a title for the chat based on the conversation. Please provide a concise and relevant title.
             

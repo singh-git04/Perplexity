@@ -10,33 +10,36 @@ export const useChat = () => {
     async function handleSendMessage({ message, chatId }) {
         dispatch(setLoading(true))
 
+        try {
+            const data = await sendMessage({ message, chatId })
 
-        const data = await sendMessage({ message, chatId })
 
+            const { chat, aiMessage } = data
+            const id = chat?._id || chatId
 
-        const { chat, aiMessage } = data
-        const id = chat?._id || chatId
+            if (chat) {
+                dispatch(createNewChat({
+                    chatId: chat._id,
+                    title: chat.title
+                }))
+            }
 
-        if (chat) {
-            dispatch(createNewChat({
-                chatId: chat._id,
-                title: chat.title
+            dispatch(addNewMessage({
+                chatId: id,
+                content: message,
+                role: 'user'
             }))
+            dispatch(addNewMessage({
+                chatId: id,
+                content: aiMessage.content,
+                role: aiMessage.role
+            }))
+            dispatch(setCurrentChatId(id))
+        } catch (error) {
+            console.log(error)
+        } finally {
+            dispatch(setLoading(false))
         }
-
-        dispatch(addNewMessage({
-            chatId: id,
-            content: message,
-            role: 'user'
-        }))
-        dispatch(addNewMessage({
-            chatId: id,
-            content: aiMessage.content,
-            role: aiMessage.role
-        }))
-        dispatch(setCurrentChatId(id))
-
-        dispatch(setLoading(false))
     }
 
     async function handleGetChat() {
@@ -55,25 +58,25 @@ export const useChat = () => {
         dispatch(setLoading(false))
     }
 
-    async function handleOpenChat(chats,chatId) {
-  
-       if (chats[chatId]?.messages.length === 0) {
+    async function handleOpenChat(chats, chatId) {
 
-        const data = await getMessages({ chatId })
-        const { messages } = data
+        if (chats[chatId]?.messages.length === 0) {
 
-        const formattedMessages = messages.map(msg => ({
-            content: msg.content,
-            role: msg.role,
-        }))
+            const data = await getMessages({ chatId })
+            const { messages } = data
 
-        dispatch(addMessages({
-            chatId,
-            messages: formattedMessages
-        }))
+            const formattedMessages = messages.map(msg => ({
+                content: msg.content,
+                role: msg.role,
+            }))
 
-    }
-     dispatch(setCurrentChatId(chatId))
+            dispatch(addMessages({
+                chatId,
+                messages: formattedMessages
+            }))
+
+        }
+        dispatch(setCurrentChatId(chatId))
     }
     return {
         initializeSocketConnection,

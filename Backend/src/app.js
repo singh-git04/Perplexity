@@ -9,6 +9,7 @@ import morgan from "morgan"
 /* Middleware */
 const app = express()
 app.use(express.json())
+app.use(express.static('./public'))
 app.use(cookieParser())
 app.use(morgan("dev"))
 app.use(cors(
