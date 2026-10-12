@@ -18,7 +18,7 @@ export async function authUser(req, res, next) {
         next()
 
     } catch (error) {
-        return res.status(404).json({
+        return res.status(401).json({
             message: "Unauthorized",
             succss: false,
             err: "Invalid Token"

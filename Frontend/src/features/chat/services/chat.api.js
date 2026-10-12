@@ -1,7 +1,7 @@
 import axios from "axios"
 
 const api = axios.create({
-    baseURL: "https://perplexity-m9px.onrender.com",
+    baseURL: `${import.meta.env.VITE_PRODUCTION_URL}`,
     withCredentials:true,
 })
 
