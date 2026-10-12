@@ -15,9 +15,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const publicPath = path.resolve(__dirname, "../public");
 
+app.use(express.static(publicPath))
+
+app.use((req, res, next) => {
+  if (req.method !== "GET" || req.path.startsWith("/api/")) {
+    return next();
+  }
+
+  res.sendFile(path.join(publicPath, "index.html"));
+});
+
 /* Middleware */
 app.use(express.json())
-app.use(express.static(publicPath))
 app.use(cookieParser())
 app.use(morgan("dev"))
 app.use(cors(
