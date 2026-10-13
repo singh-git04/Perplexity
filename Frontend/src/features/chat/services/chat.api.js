@@ -28,3 +28,8 @@ export const deleteChat = async ({chatId})=>{
     const response = await api.delete(`/api/chats/delete/${chatId}`)
     return response.data
 }
+
+export const getSharedChat = async ({ chatId }) => {
+    const response = await api.get(`/api/chats/share/${chatId}`)
+    return response.data
+}

@@ -9,54 +9,71 @@ const chatSlice = createSlice({
         error: null,
     },
     reducers: {
-        createNewChat: (state,action)=>{
+        createNewChat: (state, action) => {
             const { chatId, title } = action.payload
             state.chats[chatId] = {
-                id: chatId, 
+                id: chatId,
                 title,
                 messages: [],
                 lastUpdated: new Date().toISOString(),
             }
         },
-        addNewMessage: (state,action)=>{
-            const { chatId, content, role} = action.payload
-            state.chats[chatId].messages.push({content, role})
+        clearCurrentChat: (state) => {
+            state.currentChatId = null
         },
-        addMessages: (state,action)=>{
+        addNewMessage: (state, action) => {
+            const { chatId, content, role } = action.payload
+            if (!state.chats[chatId]) {
+                state.chats[chatId] = {
+                    id: chatId,
+                    title: "New Chat",
+                    messages: [],
+                    lastUpdated: new Date().toISOString(),
+                }
+            }
+            state.chats[chatId].messages.push({ content, role })
+            state.chats[chatId].lastUpdated = new Date().toISOString()
+        },
+        addMessages: (state, action) => {
             const { chatId, messages } = action.payload
-            state.chats[chatId].messages.push(...messages)
+            if (!state.chats[chatId]) {
+                state.chats[chatId] = {
+                    id: chatId,
+                    title: "Chat",
+                    messages: [],
+                    lastUpdated: new Date().toISOString(),
+                }
+            }
+            state.chats[chatId].messages = messages
         },
 
-        setChats: (state,action)=>{
-            state.chats = action.payload
+        setChats: (state, action) => {
+            const incoming = action.payload || {}
+            Object.keys(incoming).forEach(id => {
+                if (state.chats[id]?.messages?.length > 0) {
+                    incoming[id].messages = state.chats[id].messages
+                }
+            })
+            state.chats = incoming
         },
-        setCurrentChatId: (state,action)=>{
+        setCurrentChatId: (state, action) => {
             state.currentChatId = action.payload
         },
-        setLoading: (state,action)=>{
+        setLoading: (state, action) => {
             state.isLoading = action.payload
         },
-        setError: (state,action)=>{
+        removeChat: (state, action) => {
+            const chatId = action.payload
+            delete state.chats[chatId]
+            if (state.currentChatId === chatId) {
+                state.currentChatId = null
+            }
+        },
+        setError: (state, action) => {
             state.error = action.payload
         }
     }
 })
 
-export const { setChats, setCurrentChatId, setLoading, setError, createNewChat, addNewMessage,addMessages } = chatSlice.actions
+export const { setChats, setCurrentChatId, setLoading, setError, createNewChat, addNewMessage, addMessages, clearCurrentChat, removeChat } = chatSlice.actions
 export default chatSlice.reducer
-
-// chat = {
-//     "docker and Aws" : {
-//         messages: [
-//             {
-//                 role: 'user',
-//                 content: 'What is docker and Aws?'
-//             },
-//             {
-//                 role: 'ai',
-//                 content: 'Docker is a platform that allows developers to easily create, deploy, and run applications in containers. AWS (Amazon Web Services) is a cloud computing platform that provides a wide range of services, including computing power, storage, and databases. Together, Docker and AWS can be used to build and deploy scalable applications in the cloud.'
-//             }
-//         ],id: "docker and Aws",
-//         lastUpdated: "2023-06-28T12:00:00Z"
-//     }
-// }

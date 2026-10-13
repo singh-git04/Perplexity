@@ -272,3 +272,20 @@ export async function resetPassword(req, res) {
     });
   }
 }
+
+/* Logout */
+export async function logout(req, res) {
+  try {
+    res.clearCookie("token");
+    return res.status(200).json({
+      success: true,
+      message: "User logged out successfully"
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while logging out"
+    });
+  }
+}

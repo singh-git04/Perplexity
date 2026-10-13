@@ -3,17 +3,44 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, SystemMessage ,AIMessage, tool, createAgent} from "langchain";
 import { searchInternet } from "./internet.service.js";
 import * as z from "zod"
+import { Ollama } from "ollama";
+import { ChatOllama } from "@langchain/ollama";
 
-const geminiModel = new ChatGoogleGenerativeAI({
-  model: "gemini-3.8-flash",
-  apiKey: process.env.GOOGLE_APIKEY
+// const geminiModel = new ChatGoogleGenerativeAI({
+//   model: "gemini-3.8-flash",
+//   apiKey: process.env.GOOGLE_APIKEY
+// });
+
+// const mistralModel = new ChatMistralAI({
+// model: "mistral-small-latest",
+// apiKey: process.env.MISTRAL_APIKEY
+// });
+
+
+const ollamaModel = new ChatOllama({
+  model: "gpt-oss:120b",
+  baseUrl: "https://ollama.com",
+  headers: {
+    Authorization: `Bearer ${process.env.OLLAMA_API_KEY}`,
+  },
 });
 
-const mistralModel = new ChatMistralAI({
-model: "mistral-small-latest",
-apiKey: process.env.MISTRAL_APIKEY
-});
+// try {
+//   const result = await ollamModel.chat({
+//     model: "gpt-oss:120b",
+//     messages: [
+//       {
+//         role: "user",
+//         content: "Say hello in one sentence.",
+//       },
+//     ],
+//     stream: false,
+//   });
 
+//   console.log(result.message.content);
+// } catch (error) {
+//   console.error("Ollama Cloud request failed:", error.message);
+// }
 
 const searchInternetTool = tool(
 
@@ -29,7 +56,7 @@ const searchInternetTool = tool(
 
 
 const agent = createAgent({
-    model: geminiModel,
+    model: ollamaModel,
     tools: [searchInternetTool]
 })
 
@@ -54,7 +81,7 @@ export async function genrateResponse(messages){
 
 
 export async function generateChatTitle(message) {
-    const response  = await geminiModel.invoke([
+    const response  = await ollamaModel.invoke([
         new SystemMessage(
             `You are a helpful assistant that generates a title for the chat based on the conversation. Please provide a concise and relevant title.
             

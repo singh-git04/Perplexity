@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { getChats, getMessages, sendMessage, deleteChat } from "../controller/chat.controller.js"
+import { getChats, getMessages, sendMessage, deleteChat, getSharedChat } from "../controller/chat.controller.js"
 import { authUser } from "../middleware/authUser.middleware.js"
 
 const chatRouter = Router()
@@ -12,6 +12,8 @@ chatRouter.get('/',authUser,getChats)
 chatRouter.get('/:chatId/messages',authUser,getMessages)
 
 chatRouter.delete('/delete/:chatId',authUser,deleteChat)
+
+chatRouter.get('/share/:chatId', getSharedChat)
 
 
 export default chatRouter

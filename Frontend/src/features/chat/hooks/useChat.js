@@ -1,42 +1,48 @@
 import { initializeSocketConnection } from "../services/chat.socket";
 import { sendMessage, getChats, getMessages, deleteChat } from "../services/chat.api";
-import { setChats, setCurrentChatId, setLoading, setError, createNewChat, addNewMessage, addMessages } from "../chat.slice"
+import { setChats, setCurrentChatId, setLoading, setError, createNewChat, addNewMessage, addMessages, clearCurrentChat, removeChat } from "../chat.slice"
 import { useDispatch } from 'react-redux'
 
 export const useChat = () => {
 
     const dispatch = useDispatch()
 
-    async function handleSendMessage({ message, chatId }) {
+    async function handleSendMessage({ message, chatId, chat }) {
+        const idToSend = chatId || chat || null
         dispatch(setLoading(true))
 
         try {
-            const data = await sendMessage({ message, chatId })
+            const data = await sendMessage({ message, chatId: idToSend })
 
+            const { chat: newChat, aiMessage } = data
+            const resolvedChatId = newChat?._id || data.chatId || idToSend
 
-            const { chat, aiMessage } = data
-            const id = chat?._id || chatId
-
-            if (chat) {
+            if (newChat) {
                 dispatch(createNewChat({
-                    chatId: chat._id,
-                    title: chat.title
+                    chatId: newChat._id,
+                    title: newChat.title
                 }))
             }
 
             dispatch(addNewMessage({
-                chatId: id,
+                chatId: resolvedChatId,
                 content: message,
                 role: 'user'
             }))
-            dispatch(addNewMessage({
-                chatId: id,
-                content: aiMessage.content,
-                role: aiMessage.role
-            }))
-            dispatch(setCurrentChatId(id))
+
+            if (aiMessage) {
+                dispatch(addNewMessage({
+                    chatId: resolvedChatId,
+                    content: aiMessage.content,
+                    role: aiMessage.role
+                }))
+            }
+
+            dispatch(setCurrentChatId(resolvedChatId))
+            return { success: true, chatId: resolvedChatId, isNew: Boolean(newChat) }
         } catch (error) {
-            console.log(error)
+            console.error("Failed to send message:", error)
+            return { success: false, error }
         } finally {
             dispatch(setLoading(false))
         }
@@ -58,14 +64,15 @@ export const useChat = () => {
         dispatch(setLoading(false))
     }
 
-    async function handleOpenChat(chats, chatId) {
+    async function handleOpenChat(chatId) {
+        if (!chatId) return
+        dispatch(setCurrentChatId(chatId))
 
-        if (chats[chatId]?.messages.length === 0) {
-
+        try {
             const data = await getMessages({ chatId })
             const { messages } = data
 
-            const formattedMessages = messages.map(msg => ({
+            const formattedMessages = (messages || []).map(msg => ({
                 content: msg.content,
                 role: msg.role,
             }))
@@ -74,14 +81,36 @@ export const useChat = () => {
                 chatId,
                 messages: formattedMessages
             }))
-
+            return { success: true }
+        } catch (error) {
+            console.error("Failed to load messages:", error)
+            return { success: false, error }
         }
-        dispatch(setCurrentChatId(chatId))
     }
+
+    async function handleNewChat() {
+        dispatch(clearCurrentChat())
+    }
+
+    async function handleDeleteChat(chatId) {
+        try {
+            await deleteChat({ chatId })
+            dispatch(removeChat(chatId))
+            return { success: true }
+        } catch (error) {
+            console.error("Failed to delete chat:", error)
+            dispatch(setError(error.response?.data?.message || "Failed to delete chat"))
+            return { success: false, error }
+        }
+    }
+
     return {
         initializeSocketConnection,
         handleSendMessage,
         handleGetChat,
         handleOpenChat,
+        handleNewChat,
+        handleDeleteChat
     }
 }
+

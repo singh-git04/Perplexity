@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router"
 import Login from "../features/auth/Pages/Login"
 import Register from "../features/auth/Pages/Register"
 import Dashboard from "../features/chat/pages/Dashboard"
+import SharedChat from "../features/chat/pages/SharedChat"
 import Protected from "../features/auth/components/Protected"
 import VerifyEmail from "../features/auth/Pages/VerifyEmail"
 import CheckEmail from "../features/auth/Pages/CheckEmail"
@@ -34,7 +35,19 @@ export const routes = createBrowserRouter([
         element:<VerifyEmail/>
     },
     {
+        path: '/share/:chatId',
+        element: <SharedChat/>
+    },
+    {
         path: '/',
+        element: <Protected><Dashboard/></Protected>
+    },
+    {
+        path: '/chat/:chatId',
+        element: <Protected><Dashboard/></Protected>
+    },
+    {
+        path: '/c/:chatId',
         element: <Protected><Dashboard/></Protected>
     }
 ])  

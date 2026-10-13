@@ -11,12 +11,19 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [generalError, setGeneralError] = useState('');
 
+  const user = useSelector((state) => state.auth.user)
   const loading = useSelector((state) => state.auth.loading)
 
   const { handleRegister } = useAuth()
   const navigate = useNavigate()
 
-  
+   if (loading) {
+  return <div>Checking session...</div>;
+}
+
+if (user) {
+  return navigate('/')
+}
 
   async function handleSubmit(e) {
     e.preventDefault()
