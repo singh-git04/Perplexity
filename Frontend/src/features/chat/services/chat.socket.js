@@ -2,7 +2,7 @@ import io from 'socket.io-client'
 
 export const initializeSocketConnection = () => {
 
-    const socket = io(process.env.BACKEND_URL, {
+    const socket = io(import.meta.env.VITE_PRODUCTION_URL, {
         withcredentials: true,
     })
 

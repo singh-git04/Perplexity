@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { getSharedChat } from '../services/chat.api'
+import MarkdownRenderer from '../components/MarkdownRenderer'
 
 const SharedChat = () => {
   const { chatId } = useParams()
@@ -197,14 +196,14 @@ const SharedChat = () => {
               className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl px-5 py-3.5 text-sm leading-7 ${
+                className={`rounded-2xl px-5 py-3.5 text-sm leading-7 ${
                   message.role === 'user'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-[#171a1d] border border-zinc-800 text-zinc-300'
+                    ? 'max-w-[85%] bg-indigo-600 text-white break-words'
+                    : 'w-fit max-w-full md:max-w-[90%] bg-[#171a1d] border border-zinc-800 text-zinc-300 break-words overflow-hidden'
                 }`}
               >
                 {message.role === 'ai' ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                  <MarkdownRenderer content={message.content} />
                 ) : (
                   message.content
                 )}

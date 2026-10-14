@@ -4,6 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import { useChat } from '../hooks/useChat'
 import { useAuth } from '../../auth/hook/useAuth'
+import ThinkingIndicator from '../components/ThinkingIndicator'
+import MarkdownRenderer from '../components/MarkdownRenderer'
 import remarkGfm from "remark-gfm"
 
 const Dashboard = () => {
@@ -16,10 +18,13 @@ const Dashboard = () => {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false)
   const { user } = useSelector((state) => state.auth)
 
   const chats = useSelector((state) => state.chat.chats)
   const currentChatId = useSelector((state) => state.chat.currentChatId)
+  const isLoading = useSelector((state) => state.chat.isLoading)
+  const pendingMessage = useSelector((state) => state.chat.pendingMessage)
 
   const activeChatId = urlChatId || currentChatId
 
@@ -39,6 +44,25 @@ const Dashboard = () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
+
+  // Auto-close mobile drawer on route/chat switch or Escape key
+  useEffect(() => {
+    setIsMobileDrawerOpen(false)
+  }, [urlChatId])
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsMobileDrawerOpen(false)
+      }
+    }
+    if (isMobileDrawerOpen) {
+      document.addEventListener('keydown', handleKeyDown)
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isMobileDrawerOpen])
 
   useEffect(() => {
     chat.initializeSocketConnection()
@@ -62,7 +86,7 @@ const Dashboard = () => {
   const handleSubmit = async (event) => {
     event.preventDefault()
     const trimmedMessage = chatInput.trim()
-    if (!trimmedMessage) {
+    if (!trimmedMessage || isLoading) {
       return
     }
 
@@ -123,11 +147,138 @@ const Dashboard = () => {
     messagesEndRef.current?.scrollIntoView({
       behavior: 'smooth'
     })
-  }, [chats, activeChatId])
+  }, [chats, activeChatId, isLoading, pendingMessage])
 
   return (
     <main className="flex h-screen w-full overflow-hidden bg-[#0b0d0f] text-zinc-200">
-      {/* Sidebar */}
+      {/* Mobile Drawer Backdrop */}
+      {isMobileDrawerOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-xs transition-opacity duration-300 md:hidden"
+          onClick={() => setIsMobileDrawerOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile Navigation Drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-zinc-800 bg-[#111315] shadow-2xl transition-transform duration-300 ease-in-out md:hidden ${
+          isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        aria-label="Mobile Navigation"
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white font-bold text-black">
+              P
+            </div>
+            <span className="text-lg font-semibold text-white">Perplexity</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsMobileDrawerOpen(false)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition"
+            aria-label="Close navigation"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-4">
+          <button
+            onClick={() => {
+              handleNewChat()
+              setIsMobileDrawerOpen(false)
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
+          >
+            <span className="text-lg">＋</span>
+            New Chat
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3">
+          <p className="px-3 py-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+            Recent searches
+          </p>
+
+          <div className="space-y-1">
+            {Object.values(chats).map((chatItem) => (
+              <div
+                key={`mobile-${chatItem.id}`}
+                onClick={() => {
+                  openChat(chatItem.id)
+                  setIsMobileDrawerOpen(false)
+                }}
+                className={`group flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition cursor-pointer ${
+                  activeChatId === chatItem.id
+                    ? 'bg-zinc-800 text-white font-medium'
+                    : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-white'
+                }`}
+              >
+                <span className="truncate pr-2">{chatItem.title}</span>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDelete(chatItem.id)
+                  }}
+                  title="Delete chat"
+                  className="flex-shrink-0 p-1.5 rounded-md hover:bg-zinc-700/60 text-zinc-400 hover:text-rose-400 transition"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-zinc-800 p-3">
+          <div className="flex items-center justify-between rounded-xl p-2 bg-zinc-900/60">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-xs font-semibold text-white">
+                {userInitial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-white">{userName}</p>
+                <p className="truncate text-[10px] text-zinc-500">{user?.email}</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileDrawerOpen(false)
+                handleLogoutClick()
+              }}
+              className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition"
+              title="Log out"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Desktop Sidebar */}
       <aside className="hidden w-72 shrink-0 flex-col border-r border-zinc-800 bg-[#111315] md:flex">
         <div className="flex items-center gap-3 border-b border-zinc-800 px-5 py-5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white font-bold text-black">
@@ -241,12 +392,22 @@ const Dashboard = () => {
 
       {/* Chat area */}
       <section className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-zinc-800 px-5 md:px-10">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-sm font-bold text-black md:hidden">
-              P
-            </div>
-            <h1 className="font-medium text-white truncate max-w-md">
+        <header className="flex h-16 items-center justify-between border-b border-zinc-800 px-4 md:px-10">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Mobile drawer toggle */}
+            <button
+              type="button"
+              onClick={() => setIsMobileDrawerOpen(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:bg-zinc-800 hover:text-white transition md:hidden"
+              aria-label="Open sidebar"
+              title="Open sidebar"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            <h1 className="font-medium text-white truncate max-w-xs md:max-w-md text-sm md:text-base">
               {activeChatId && chats[activeChatId]?.title ? chats[activeChatId].title : 'New thread'}
             </h1>
           </div>
@@ -270,8 +431,8 @@ const Dashboard = () => {
         </header>
 
         <div className="flex flex-1 justify-center overflow-y-auto">
-          <div className="w-full max-w-6xl px-5 py-10 md:px-8">
-            {(!chats[activeChatId]?.messages || chats[activeChatId]?.messages.length === 0) && (
+          <div className="w-full max-w-6xl px-3.5 sm:px-5 py-6 md:py-10 md:px-8">
+            {(!chats[activeChatId]?.messages || chats[activeChatId]?.messages.length === 0) && !pendingMessage && (
               <div className="mb-10 text-center">
                 <h2 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">
                   Where knowledge begins
@@ -290,21 +451,36 @@ const Dashboard = () => {
                     }`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-7 ${message.role === 'user'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-[#171a1d] text-zinc-300'
+                    className={`rounded-2xl px-4 py-3 text-sm leading-7 ${message.role === 'user'
+                        ? 'max-w-[85%] bg-indigo-600 text-white break-words'
+                        : 'w-fit max-w-full md:max-w-[90%] bg-[#171a1d] border border-zinc-800/80 text-zinc-300 break-words overflow-hidden'
                       }`}
                   >
                     {message.role === 'ai' ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                      <MarkdownRenderer content={message.content} />
                     ) : (
                       message.content
                     )}
                   </div>
-
-
                 </div>
               ))}
+
+              {/* Optimistic user message for newly initiated chat thread */}
+              {pendingMessage && (
+                <div className="flex justify-end gap-4">
+                  <div className="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-7 bg-indigo-600 text-white">
+                    {pendingMessage.content}
+                  </div>
+                </div>
+              )}
+
+              {/* Perplexity-style AI Thinking Indicator */}
+              {isLoading && (
+                <div className="flex justify-start gap-4">
+                  <ThinkingIndicator />
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
           </div>
@@ -322,20 +498,28 @@ const Dashboard = () => {
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && !event.shiftKey) {
                   event.preventDefault()
-                  handleSubmit(event)
+                  if (!isLoading && chatInput.trim()) {
+                    handleSubmit(event)
+                  }
                 }
               }}
+              disabled={isLoading}
               rows="1"
-              placeholder="Ask anything..."
-              className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-white outline-none placeholder:text-zinc-500"
+              placeholder={isLoading ? "Generating answer..." : "Ask anything..."}
+              className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-white outline-none placeholder:text-zinc-500 disabled:opacity-50"
             />
 
             <button
               type="submit"
-              disabled={!chatInput.trim()}
+              disabled={!chatInput.trim() || isLoading}
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-lg font-bold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-30"
+              title={isLoading ? "Generating answer..." : "Send message"}
             >
-              ↑
+              {isLoading ? (
+                <div className="h-4 w-4 rounded-full border-2 border-zinc-900 border-t-transparent animate-spin" />
+              ) : (
+                '↑'
+              )}
             </button>
           </form>
 

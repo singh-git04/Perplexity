@@ -1,6 +1,6 @@
 import { initializeSocketConnection } from "../services/chat.socket";
 import { sendMessage, getChats, getMessages, deleteChat } from "../services/chat.api";
-import { setChats, setCurrentChatId, setLoading, setError, createNewChat, addNewMessage, addMessages, clearCurrentChat, removeChat } from "../chat.slice"
+import { setChats, setCurrentChatId, setLoading, setError, createNewChat, addNewMessage, addMessages, clearCurrentChat, removeChat, setPendingMessage } from "../chat.slice"
 import { useDispatch } from 'react-redux'
 
 export const useChat = () => {
@@ -9,7 +9,22 @@ export const useChat = () => {
 
     async function handleSendMessage({ message, chatId, chat }) {
         const idToSend = chatId || chat || null
+        dispatch(setError(null))
         dispatch(setLoading(true))
+
+        // Optimistically display the user's message immediately
+        if (idToSend) {
+            dispatch(addNewMessage({
+                chatId: idToSend,
+                content: message,
+                role: 'user'
+            }))
+        } else {
+            dispatch(setPendingMessage({
+                content: message,
+                role: 'user'
+            }))
+        }
 
         try {
             const data = await sendMessage({ message, chatId: idToSend })
@@ -22,13 +37,13 @@ export const useChat = () => {
                     chatId: newChat._id,
                     title: newChat.title
                 }))
+                // Add the user message into the newly created chat structure
+                dispatch(addNewMessage({
+                    chatId: resolvedChatId,
+                    content: message,
+                    role: 'user'
+                }))
             }
-
-            dispatch(addNewMessage({
-                chatId: resolvedChatId,
-                content: message,
-                role: 'user'
-            }))
 
             if (aiMessage) {
                 dispatch(addNewMessage({
@@ -38,10 +53,22 @@ export const useChat = () => {
                 }))
             }
 
+            dispatch(setPendingMessage(null))
             dispatch(setCurrentChatId(resolvedChatId))
             return { success: true, chatId: resolvedChatId, isNew: Boolean(newChat) }
         } catch (error) {
             console.error("Failed to send message:", error)
+            const errorMsg = error.response?.data?.message || "Failed to generate response. Please try again."
+            dispatch(setError(errorMsg))
+
+            if (idToSend) {
+                dispatch(addNewMessage({
+                    chatId: idToSend,
+                    content: `⚠️ **Error:** ${errorMsg}`,
+                    role: 'ai'
+                }))
+            }
+            dispatch(setPendingMessage(null))
             return { success: false, error }
         } finally {
             dispatch(setLoading(false))
