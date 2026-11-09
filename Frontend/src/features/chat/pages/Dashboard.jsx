@@ -67,6 +67,7 @@ const Dashboard = () => {
   useEffect(() => {
     chat.initializeSocketConnection()
     chat.handleGetChat()
+    return () => chat.disconnectSocket()
   }, [])
 
   // Sync active chat whenever urlChatId changes or page is refreshed

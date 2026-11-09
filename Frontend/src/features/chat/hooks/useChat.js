@@ -1,7 +1,7 @@
-import { initializeSocketConnection } from "../services/chat.socket";
 import { sendMessage, getChats, getMessages, deleteChat } from "../services/chat.api";
 import { setChats, setCurrentChatId, setLoading, setError, createNewChat, addNewMessage, addMessages, clearCurrentChat, removeChat, setPendingMessage } from "../chat.slice"
 import { useDispatch } from 'react-redux'
+import { initializeSocketConnection, disconnectSocket, sendMessageSocket } from "../services/chat.socket";
 
 export const useChat = () => {
 
@@ -27,7 +27,7 @@ export const useChat = () => {
         }
 
         try {
-            const data = await sendMessage({ message, chatId: idToSend })
+            const data = await sendMessageSocket({ message, chatId: idToSend })
 
             const { chat: newChat, aiMessage } = data
             const resolvedChatId = newChat?._id || data.chatId || idToSend
@@ -133,11 +133,12 @@ export const useChat = () => {
 
     return {
         initializeSocketConnection,
+        disconnectSocket,
         handleSendMessage,
         handleGetChat,
         handleOpenChat,
         handleNewChat,
-        handleDeleteChat
+        handleDeleteChat,
     }
 }
 

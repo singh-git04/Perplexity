@@ -1,69 +1,24 @@
 import { genrateResponse, generateChatTitle} from "../services/ai.service.js"
 import chatModel from "../model/chat.model.js"
 import messageModel from "../model/message.model.js"
+import { processUserMessage } from "../services/chat.service.js"
 
 
-export async function sendMessage(req,res) {
-    
+export async function sendMessage(req, res) {
     try {
-        const { message } = req.body;
-        const incomingChatId = req.body.chatId || req.body.chat;
-
-        let title = null;
-        let chat = null;
-        let activeChatId = incomingChatId;
-
-        // If no chat ID provided, create a brand new chat on first message
-        if (!activeChatId) {
-            title = await generateChatTitle(message);
-            
-            chat = await chatModel.create({
-                user: req.user.id,
-                title: title
-            });
-            activeChatId = chat._id;
-        } else {
-            // Otherwise, continue existing chat
-            const existingChat = await chatModel.findOne({
-                _id: activeChatId,
-                user: req.user.id
-            });
-
-            if (!existingChat) {
-                return res.status(404).json({
-                    message: "Chat not found"
-                });
-            }
-        }
-
-        const userMessage = await messageModel.create({
-            chat: activeChatId,
-            content: message,
-            role: "user"
-        });
-        
-        const messages = await messageModel.find({ chat: activeChatId }).sort({ createdAt: 1 });
-        const result = await genrateResponse(messages);
-
-        const aiMessage = await messageModel.create({
-            chat: activeChatId,
-            content: result,
-            role: "ai"
-        });
-
-        return res.status(201).json({
-            chatId: activeChatId,
-            title, 
-            chat,
-            aiMessage,
-        });
+        const data = await processUserMessage({
+            userId: req.user.id,
+            message: req.body.message,
+            chatId: req.body.chatId || req.body.chat,
+        })
+        return res.status(201).json(data)
     } catch (error) {
-        console.error("Send message error:", error);
-
+        if (error.status === 404) return res.status(404).json({ message: error.message })
+        console.error("Send message error:", error)
         return res.status(503).json({
             success: false,
-            message: "The AI service is temporarily unavailable. Please try again."
-        });
+            message: "The AI service is temporarily unavailable. Please try again.",
+        })
     }
 }
 
